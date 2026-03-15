@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- for optimal display on high DPI devices -->
+
+    <!-- Photo Sphere Viewer & Plugins CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core/index.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin/index.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/gallery-plugin/index.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/compass-plugin/index.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/virtual-tour-plugin/index.min.css"
+    />
+    <!-- Leaflet & Plan Plugin CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/plan-plugin/index.min.css"
+    />
+
+    <title>Virtual Tour</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {};
+    </script>
+  </head>
+  <body
+    class="bg-slate-50 min-h-screen flex items-center justify-center font-sans antialiased text-slate-800"
+  >
+    <!-- the viewer container must have a defined size -->
+    <div id="viewer" style="width: 100vw; height: 100vh"></div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three/build/three.module.js",
+          "@photo-sphere-viewer/core": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core/index.module.js",
+          "@photo-sphere-viewer/markers-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin/index.module.js",
+          "@photo-sphere-viewer/gallery-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/gallery-plugin/index.module.js",
+          "@photo-sphere-viewer/compass-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/compass-plugin/index.module.js",
+          "@photo-sphere-viewer/virtual-tour-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/virtual-tour-plugin/index.module.js",
+          "leaflet": "https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js",
+          "@photo-sphere-viewer/plan-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/plan-plugin/index.module.js"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import { Viewer } from "@photo-sphere-viewer/core";
+      import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
+      import { GalleryPlugin } from "@photo-sphere-viewer/gallery-plugin";
+      import { CompassPlugin } from "@photo-sphere-viewer/compass-plugin";
+      import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
+      import { PlanPlugin } from "@photo-sphere-viewer/plan-plugin";
+
+      const viewer = new Viewer({
+        container: document.querySelector("#viewer"),
+        // panorama: "images/2.jpg", // Akan di-override oleh virtual tour plugin (bila nodes diatur)
+        defaultYaw: "130deg",
+        plugins: [
+          // 1. Compass Plugin
+          [
+            CompassPlugin,
+            {
+              hotspots: [
+                { yaw: "0deg" },
+                { yaw: "90deg" },
+                { yaw: "180deg" },
+                { yaw: "270deg" },
+              ],
+            },
+          ],
+          // 2. Markers Plugin
+          [
+            MarkersPlugin,
+            {
+              markers: [],
+            },
+          ],
+          // 3. Gallery Plugin
+          [
+            GalleryPlugin,
+            {
+              visibleOnLoad: false,
+              hideOnClick: false,
+            },
+          ],
+          // 4. Plan Plugin - Menampilkan peta berbasis koordinat GPS
+          [
+            PlanPlugin,
+            {
+              coordinates: [114.306778, -8.293812], // Titik pusat awal [longitude, latitude]
+              bearing: "130deg", // Menyesuaikan setara defaultYaw / arah kamera
+              defaultZoom: 18,
+            },
+          ],
+          // 5. Virtual Tour Plugin
+          [
+            VirtualTourPlugin,
+            {
+              positionMode: "manual",
+              renderMode: "3d",
+            },
+          ],
+        ],
+      });
+
+      // Konfigurasi node untuk Virtual Tour Plugin dan Gallery Plugin
+      const virtualTour = viewer.getPlugin(VirtualTourPlugin);
+
+      virtualTour.setNodes(
+        [
+          {
+            id: "node-1",
+            panorama: "images/2.jpg",
+            thumbnail: "images/2.jpg", // Thumbnail untuk gallery
+            name: "Ruangan Mesin",
+            // Format gps di VirtualTourPlugin umumnya menggunakan [longitude, latitude]
+            gps: [114.306778, -8.293812],
+            markers: [
+              {
+                id: "marker-gedung-mesin",
+                position: { yaw: "85deg", pitch: "5deg" }, // Disesuaikan posisi gedung di gambar
+                html: "🏢 Gedung Lab Mesin",
+                style: {
+                  color: "white",
+                  fontSize: "14px",
+                  fontFamily: "sans-serif",
+                  textAlign: "center",
+                  backgroundColor: "rgba(0,0,0,0.6)",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid white",
+                  cursor: "pointer",
+                },
+                tooltip: "Lihat Info Gedung Lab Mesin",
+                content: `
+                  <div class="p-4" style="min-width: 300px;">
+                    <h3 class="font-bold text-xl mb-2 text-slate-100">Gedung Lab Mesin</h3>
+                    <p class="text-sm text-slate-200 mb-4">Informasi mengenai fasilitas dan kegiatan di Laboratorium Mesin.</p>
+                    <video controls class="w-full rounded-lg shadow-sm" preload="metadata" style="max-height: 250px;">
+                      <source src="video/test.mp4" type="video/mp4">
+                      Browser Anda tidak mendukung tag video.
+                    </video>
+                  </div>
+                `,
+              },
+            ],
+            links: [
+              // Link ke node 2 (3.jpg) di sisi kiri (270 derajat / -90 derajat)
+              { nodeId: "node-2", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-2",
+            panorama: "images/3.jpg",
+            thumbnail: "images/3.jpg",
+            name: "Jalan Antara Lab Mesin dan Infomatika ",
+            links: [
+              // Link kembali ke node 1 (2.jpg) (arah belakang)
+              { nodeId: "node-1", position: { yaw: "180deg", pitch: "0deg" } },
+              // Link lanjut ke node 3 (4.jpg) (arah depan)
+              { nodeId: "node-3", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-3",
+            panorama: "images/4.jpg",
+            thumbnail: "images/4.jpg",
+            name: "Jalan Antara Lab Mesin dan Infomatika",
+            links: [
+              // Link kembali ke node 2 (3.jpg) (arah belakang)
+              { nodeId: "node-2", position: { yaw: "180deg", pitch: "0deg" } },
+              // Link lanjut ke node 3 (4.jpg) (arah depan)
+              { nodeId: "node-4", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-4",
+            panorama: "images/5.jpg",
+            thumbnail: "images/5.jpg",
+            name: "Jalan Depan Lab Informatika",
+            links: [
+              // Link kembali ke node 2 (3.jpg) (arah belakang)
+              { nodeId: "node-3", position: { yaw: "180deg", pitch: "0deg" } },
+              // Link lanjut ke node 3 (4.jpg) (arah depan)
+              { nodeId: "node-5", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-5",
+            panorama: "images/6.jpg",
+            thumbnail: "images/6.jpg",
+            name: "Jalan Depan Lab Informatika",
+            links: [
+              // Link kembali ke node 2 (3.jpg) (arah belakang)
+              { nodeId: "node-4", position: { yaw: "180deg", pitch: "0deg" } },
+              // Link lanjut ke node 3 (4.jpg) (arah depan)
+              { nodeId: "node-6", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-6",
+            panorama: "images/7.jpg",
+            thumbnail: "images/7.jpg",
+            name: "Jalan Depan Lab Informatika",
+            links: [
+              // Link kembali ke node 5 (6.jpg) (arah belakang)
+              { nodeId: "node-5", position: { yaw: "180deg", pitch: "0deg" } },
+              // Link lanjut ke node 7 (8.jpg) (arah depan)
+              { nodeId: "node-7", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-7",
+            panorama: "images/8.jpg",
+            thumbnail: "images/8.jpg",
+            name: "Jalan Depan Lab Informatika",
+            links: [
+              { nodeId: "node-6", position: { yaw: "180deg", pitch: "0deg" } },
+              { nodeId: "node-8", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-8",
+            panorama: "images/9.jpg",
+            thumbnail: "images/9.jpg",
+            name: "Area Parkir atau Jalan Utama",
+            links: [
+              { nodeId: "node-7", position: { yaw: "180deg", pitch: "0deg" } },
+              { nodeId: "node-9", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-9",
+            panorama: "images/10.jpg",
+            thumbnail: "images/10.jpg",
+            name: "Area Parkir atau Jalan Utama",
+            links: [
+              { nodeId: "node-8", position: { yaw: "180deg", pitch: "0deg" } },
+              { nodeId: "node-10", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-10",
+            panorama: "images/11.jpg",
+            thumbnail: "images/11.jpg",
+            name: "Area Parkir atau Jalan Utama",
+            links: [
+              { nodeId: "node-9", position: { yaw: "180deg", pitch: "0deg" } },
+              { nodeId: "node-11", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-11",
+            panorama: "images/12.jpg",
+            thumbnail: "images/12.jpg",
+            name: "Area Parkir atau Jalan Utama",
+            links: [
+              { nodeId: "node-10", position: { yaw: "180deg", pitch: "0deg" } },
+              { nodeId: "node-12", position: { yaw: "0deg", pitch: "0deg" } },
+            ],
+          },
+          {
+            id: "node-12",
+            panorama: "images/13.jpg",
+            thumbnail: "images/13.jpg",
+            name: "Area Parkir atau Jalan Utama",
+            links: [
+              // Node terakhir, hanya bisa mundur ke node 11 (12.jpg)
+              { nodeId: "node-11", position: { yaw: "180deg", pitch: "0deg" } },
+            ],
+          },
+        ],
+        "node-1",
+      ); // 'node-1' adalah node awal yang dirender
+    </script>
+  </body>
+</html>
