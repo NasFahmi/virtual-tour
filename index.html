@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- for optimal display on high DPI devices -->
 
     <!-- Photo Sphere Viewer & Plugins CSS -->
     <link
@@ -36,6 +35,42 @@
       href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/plan-plugin/index.min.css"
     />
 
+    <style type="text/tailwindcss">
+      /* --- CUSTOM TOOLTIP STYLES --- */
+      /* Karena PSV memasang class ini secara dinamis pada elemen non-DOM miliknya,
+         kita pakai Tailwind `@apply` untuk class bawaan PSV */
+      .tooltip-video-modern {
+        @apply bg-transparent shadow-none border-none p-0 w-[360px] md:w-[560px] !max-w-[90vw] pointer-events-auto z-[10000] !important;
+      }
+
+      .tooltip-video-modern .psv-tooltip-content {
+        @apply p-0 bg-slate-900/95 backdrop-blur-md rounded-xl border border-white/15 overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.6)];
+      }
+
+      .tooltip-video-modern .psv-tooltip-arrow {
+        @apply border-t-slate-900/95 !important;
+      }
+
+      /* Hover Animasi Custom Marker */
+      .marker-video-thumb {
+        @apply transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)];
+      }
+      .marker-video-thumb:hover {
+        @apply scale-105 -translate-y-1 border-red-500;
+      }
+
+      /* Pastikan marker PSV bisa diklik proper */
+      .psv-marker {
+        cursor: pointer !important;
+        z-index: 1000 !important;
+      }
+
+      /* Helper untuk debug */
+      .tooltip-debug {
+        @apply fixed top-2.5 right-2.5 bg-black/80 text-white p-2.5 rounded-lg text-xs z-[99999] hidden;
+      }
+    </style>
+
     <title>Virtual Tour</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -46,6 +81,12 @@
   <body
     class="bg-slate-50 min-h-screen flex items-center justify-center font-sans antialiased text-slate-800"
   >
+    <!-- Debug Panel (bisa dihapus nanti) -->
+    <div id="debug-panel" class="tooltip-debug">
+      <div>Tooltip State: <span id="tooltip-state">hidden</span></div>
+      <div>Marker ID: <span id="marker-id">-</span></div>
+    </div>
+
     <!-- the viewer container must have a defined size -->
     <div id="viewer" style="width: 100vw; height: 100vh"></div>
 
@@ -72,9 +113,34 @@
       import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
       import { PlanPlugin } from "@photo-sphere-viewer/plan-plugin";
 
+      // Fungsi untuk membuat konten tooltip video
+      function createVideoTooltipContent() {
+        return `
+          <iframe
+            class="w-full aspect-video rounded-t-xl border-none block bg-black"
+            src="https://www.youtube.com/embed/bMknfKXIFA8?autoplay=1&modestbranding=1&rel=0&enablejsapi=1"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            id="video-iframe-${Date.now()}"
+          ></iframe>
+          <div class="p-4 text-white">
+            <h3 class="m-0 mb-1 text-base font-semibold text-slate-50 flex justify-between items-center">
+              Faktor K3 Bengkel
+              <span class="text-xl text-slate-400 cursor-pointer p-1 hover:text-slate-50 transition-colors leading-none" onclick="window.closeVideoTooltip()">&times;</span>
+            </h3>
+            <p class="m-0 text-[13px] text-slate-400 leading-relaxed">Video Pengenalan Standar Keselamatan dan Kesehatan Kerja di Laboratorium Mesin Utama.</p>
+          </div>
+        `;
+      }
+
+      // Fungsi global untuk menutup tooltip
+      window.closeVideoTooltip = function () {
+        // Simulasikan klik di area kosong Canvas untuk memberi tahu PSV agar menutup semua tooltip terbuka.
+        document.querySelector(".psv-canvas-container").click();
+      };
+
       const viewer = new Viewer({
         container: document.querySelector("#viewer"),
-        // panorama: "images/2.jpg", // Akan di-override oleh virtual tour plugin (bila nodes diatur)
         defaultYaw: "130deg",
         plugins: [
           // 1. Compass Plugin
@@ -104,12 +170,12 @@
               hideOnClick: false,
             },
           ],
-          // 4. Plan Plugin - Menampilkan peta berbasis koordinat GPS
+          // 4. Plan Plugin
           [
             PlanPlugin,
             {
-              coordinates: [114.306778, -8.293812], // Titik pusat awal [longitude, latitude]
-              bearing: "130deg", // Menyesuaikan setara defaultYaw / arah kamera
+              coordinates: [114.306778, -8.293812],
+              bearing: "130deg",
               defaultZoom: 18,
             },
           ],
@@ -124,7 +190,7 @@
         ],
       });
 
-      // Konfigurasi node untuk Virtual Tour Plugin dan Gallery Plugin
+      // Konfigurasi node untuk Virtual Tour Plugin
       const virtualTour = viewer.getPlugin(VirtualTourPlugin);
 
       virtualTour.setNodes(
@@ -132,14 +198,14 @@
           {
             id: "node-1",
             panorama: "images/2.jpg",
-            thumbnail: "images/2.jpg", // Thumbnail untuk gallery
+            thumbnail: "images/2.jpg",
             name: "Ruangan Mesin",
-            // Format gps di VirtualTourPlugin umumnya menggunakan [longitude, latitude]
             gps: [114.306778, -8.293812],
             markers: [
+              // Marker Gedung dengan Panel Popup
               {
                 id: "marker-gedung-mesin",
-                position: { yaw: "85deg", pitch: "5deg" }, // Disesuaikan posisi gedung di gambar
+                position: { yaw: "85deg", pitch: "5deg" },
                 html: "🏢 Gedung Lab Mesin",
                 style: {
                   color: "white",
@@ -157,16 +223,37 @@
                   <div class="p-4" style="min-width: 300px;">
                     <h3 class="font-bold text-xl mb-2 text-slate-100">Gedung Lab Mesin</h3>
                     <p class="text-sm text-slate-200 mb-4">Informasi mengenai fasilitas dan kegiatan di Laboratorium Mesin.</p>
-                    <video controls class="w-full rounded-lg shadow-sm" preload="metadata" style="max-height: 250px;">
-                      <source src="video/test.mp4" type="video/mp4">
-                      Browser Anda tidak mendukung tag video.
-                    </video>
                   </div>
                 `,
               },
+
+              // Marker Video Interaktif via Custom Tooltip
+              {
+                id: "marker-video-popup",
+                position: { yaw: "85deg", pitch: "10deg" },
+                html: `
+                  <div class="marker-video-thumb w-[148px] bg-slate-900/90 border-2 border-white/80 rounded-lg p-1 shadow-[0_6px_16px_rgba(0,0,0,0.5)] text-center relative overflow-hidden select-none">
+
+                    <div class="text-[11px] font-semibold text-white mt-[6px] mb-[2px] flex justify-center items-center gap-1 font-sans">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+                      Video Pengenalan K3
+                    </div>
+                  </div>
+                `,
+                size: { width: 148, height: 110 },
+                anchor: "bottom center",
+
+                // Konfigurasi Tooltip yang DIPERBAIKI
+                tooltip: {
+                  content: createVideoTooltipContent(),
+                  className: "tooltip-video-modern",
+                  position: "top",
+                  trigger: "click",
+                  offset: "10px",
+                },
+              },
             ],
             links: [
-              // Link ke node 2 (3.jpg) di sisi kiri (270 derajat / -90 derajat)
               { nodeId: "node-2", position: { yaw: "0deg", pitch: "0deg" } },
             ],
           },
@@ -174,11 +261,9 @@
             id: "node-2",
             panorama: "images/3.jpg",
             thumbnail: "images/3.jpg",
-            name: "Jalan Antara Lab Mesin dan Infomatika ",
+            name: "Jalan Antara Lab Mesin dan Infomatika",
             links: [
-              // Link kembali ke node 1 (2.jpg) (arah belakang)
               { nodeId: "node-1", position: { yaw: "180deg", pitch: "0deg" } },
-              // Link lanjut ke node 3 (4.jpg) (arah depan)
               { nodeId: "node-3", position: { yaw: "0deg", pitch: "0deg" } },
             ],
           },
@@ -188,9 +273,7 @@
             thumbnail: "images/4.jpg",
             name: "Jalan Antara Lab Mesin dan Infomatika",
             links: [
-              // Link kembali ke node 2 (3.jpg) (arah belakang)
               { nodeId: "node-2", position: { yaw: "180deg", pitch: "0deg" } },
-              // Link lanjut ke node 3 (4.jpg) (arah depan)
               { nodeId: "node-4", position: { yaw: "0deg", pitch: "0deg" } },
             ],
           },
@@ -200,9 +283,7 @@
             thumbnail: "images/5.jpg",
             name: "Jalan Depan Lab Informatika",
             links: [
-              // Link kembali ke node 2 (3.jpg) (arah belakang)
               { nodeId: "node-3", position: { yaw: "180deg", pitch: "0deg" } },
-              // Link lanjut ke node 3 (4.jpg) (arah depan)
               { nodeId: "node-5", position: { yaw: "0deg", pitch: "0deg" } },
             ],
           },
@@ -212,9 +293,7 @@
             thumbnail: "images/6.jpg",
             name: "Jalan Depan Lab Informatika",
             links: [
-              // Link kembali ke node 2 (3.jpg) (arah belakang)
               { nodeId: "node-4", position: { yaw: "180deg", pitch: "0deg" } },
-              // Link lanjut ke node 3 (4.jpg) (arah depan)
               { nodeId: "node-6", position: { yaw: "0deg", pitch: "0deg" } },
             ],
           },
@@ -224,9 +303,7 @@
             thumbnail: "images/7.jpg",
             name: "Jalan Depan Lab Informatika",
             links: [
-              // Link kembali ke node 5 (6.jpg) (arah belakang)
               { nodeId: "node-5", position: { yaw: "180deg", pitch: "0deg" } },
-              // Link lanjut ke node 7 (8.jpg) (arah depan)
               { nodeId: "node-7", position: { yaw: "0deg", pitch: "0deg" } },
             ],
           },
@@ -286,13 +363,96 @@
             thumbnail: "images/13.jpg",
             name: "Area Parkir atau Jalan Utama",
             links: [
-              // Node terakhir, hanya bisa mundur ke node 11 (12.jpg)
               { nodeId: "node-11", position: { yaw: "180deg", pitch: "0deg" } },
             ],
           },
         ],
         "node-1",
-      ); // 'node-1' adalah node awal yang dirender
+      );
+
+      // Dapatkan plugin markers
+      const markersPlugin = viewer.getPlugin(MarkersPlugin);
+
+      // --- DEBUG LOGGING ---
+      const debugPanel = document.getElementById("debug-panel");
+      const tooltipState = document.getElementById("tooltip-state");
+      const markerId = document.getElementById("marker-id");
+
+      // Tampilkan debug panel (hapus komentar jika ingin debug)
+      // debugPanel.style.display = 'block';
+
+      // Event listener untuk show tooltip
+      markersPlugin.addEventListener("show-tooltip", (e) => {
+        console.log("✅ Tooltip shown:", e.marker.id);
+        if (debugPanel) {
+          tooltipState.textContent = "visible";
+          markerId.textContent = e.marker.id;
+        }
+
+        const iframe = document.querySelector(".tooltip-video-modern iframe");
+        if (iframe) {
+          // Kita gunakan command resmi YouTube Iframe API untuk me-reset / restart video
+          iframe.contentWindow.postMessage(
+            '{"event":"command","func":"seekTo","args":[0, true]}',
+            "*",
+          );
+          iframe.contentWindow.postMessage(
+            '{"event":"command","func":"playVideo","args":""}',
+            "*",
+          );
+        }
+      });
+
+      // Event listener untuk hide tooltip
+      markersPlugin.addEventListener("hide-tooltip", (e) => {
+        console.log("❌ Tooltip hidden:", e.marker.id);
+        if (debugPanel) {
+          tooltipState.textContent = "hidden";
+          markerId.textContent = e.marker.id || "-";
+        }
+
+        // Stop video dengan mengganti src
+        if (e.marker.id === "marker-video-popup") {
+          const iframe = document.querySelector(".tooltip-video-modern iframe");
+          if (iframe) {
+            // Mainkan command Pause lewat YouTube API agar video tidak jalan di belakang
+            iframe.contentWindow.postMessage(
+              '{"event":"command","func":"pauseVideo","args":""}',
+              "*",
+            );
+          }
+        }
+      });
+
+      // Event listener untuk click pada marker
+      markersPlugin.addEventListener("select-marker", (e) => {
+        console.log("🎯 Marker clicked:", e.marker.id);
+      });
+
+      // Animasi kamera ke marker saat pertama load
+      viewer.addEventListener(
+        "ready",
+        () => {
+          console.log("✅ Viewer ready");
+          viewer.animate({
+            yaw: "85deg",
+            pitch: "10deg",
+            speed: 700,
+          });
+        },
+        { once: true },
+      );
+
+      // Handle window resize untuk memastikan tooltip posisinya benar
+      let resizeTimeout;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          console.log("📐 Window resized, repositioning tooltips");
+          // Kita tidak perlu memanggil error method hideMarkerTooltip
+          document.querySelector(".psv-canvas-container").click();
+        }, 250);
+      });
     </script>
   </body>
 </html>
