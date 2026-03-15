@@ -37,18 +37,23 @@
 
     <style type="text/tailwindcss">
       /* --- CUSTOM TOOLTIP STYLES --- */
-      /* Karena PSV memasang class ini secara dinamis pada elemen non-DOM miliknya,
-         kita pakai Tailwind `@apply` untuk class bawaan PSV */
       .tooltip-video-modern {
         @apply bg-transparent shadow-none border-none p-0 w-[360px] md:w-[560px] !max-w-[90vw] pointer-events-auto z-[10000] !important;
+        /* Hapus transform dan opacity default PSV */
+        transform: none !important;
+        opacity: 1 !important;
       }
 
       .tooltip-video-modern .psv-tooltip-content {
         @apply p-0 bg-slate-900/95 backdrop-blur-md rounded-xl border border-white/15 overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.6)];
       }
 
+      /* Perbaiki posisi arrow */
       .tooltip-video-modern .psv-tooltip-arrow {
         @apply border-t-slate-900/95 !important;
+        width: 16px !important;
+        height: 8px !important;
+        margin-bottom: -1px !important; /* Hilangkan gap kecil */
       }
 
       /* Hover Animasi Custom Marker */
@@ -65,9 +70,9 @@
         z-index: 1000 !important;
       }
 
-      /* Helper untuk debug */
-      .tooltip-debug {
-        @apply fixed top-2.5 right-2.5 bg-black/80 text-white p-2.5 rounded-lg text-xs z-[99999] hidden;
+      /* Pastikan tooltip container tidak ada margin/padding ekstra */
+      .psv-tooltip {
+        @apply m-0 p-0 !important;
       }
     </style>
 
@@ -81,12 +86,6 @@
   <body
     class="bg-slate-50 min-h-screen flex items-center justify-center font-sans antialiased text-slate-800"
   >
-    <!-- Debug Panel (bisa dihapus nanti) -->
-    <div id="debug-panel" class="tooltip-debug">
-      <div>Tooltip State: <span id="tooltip-state">hidden</span></div>
-      <div>Marker ID: <span id="marker-id">-</span></div>
-    </div>
-
     <!-- the viewer container must have a defined size -->
     <div id="viewer" style="width: 100vw; height: 100vh"></div>
 
@@ -117,7 +116,7 @@
       function createVideoTooltipContent() {
         return `
           <iframe
-            class="w-full aspect-video rounded-t-xl border-none block bg-black"
+            class="w-full h-[380px] rounded-t-xl border-none block bg-black"
             src="https://www.youtube.com/embed/bMknfKXIFA8?autoplay=1&modestbranding=1&rel=0&enablejsapi=1"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
@@ -132,12 +131,6 @@
           </div>
         `;
       }
-
-      // Fungsi global untuk menutup tooltip
-      window.closeVideoTooltip = function () {
-        // Simulasikan klik di area kosong Canvas untuk memberi tahu PSV agar menutup semua tooltip terbuka.
-        document.querySelector(".psv-canvas-container").click();
-      };
 
       const viewer = new Viewer({
         container: document.querySelector("#viewer"),
@@ -372,6 +365,13 @@
 
       // Dapatkan plugin markers
       const markersPlugin = viewer.getPlugin(MarkersPlugin);
+
+      // Fungsi global untuk menutup tooltip dipindah ke sini agar bisa membaca variabel markersPlugin
+      window.closeVideoTooltip = function () {
+        if (markersPlugin) {
+          markersPlugin.hideMarkerTooltip("marker-video-popup");
+        }
+      };
 
       // --- DEBUG LOGGING ---
       const debugPanel = document.getElementById("debug-panel");
